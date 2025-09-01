@@ -1,0 +1,174 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char *buf;
+    int len;
+    int cap;
+} Text;
+
+static void text_init(Text *t) {
+    t->cap = 1024;
+    t->len = 0;
+    t->buf = (char *)malloc(t->cap);
+    t->buf[0] = '\0';
+}
+
+static void text_ensure(Text *t, int need_extra) {
+    if (t->len + need_extra + 1 <= t->cap) return;
+    while (t->len + need_extra + 1 > t->cap) t->cap <<= 1;
+    t->buf = (char *)realloc(t->buf, t->cap);
+}
+
+static void text_append(Text *t, const char *s, int slen) {
+    text_ensure(t, slen);
+    memcpy(t->buf + t->len, s, slen);
+    t->len += slen;
+    t->buf[t->len] = '\0';
+}
+
+static void text_delete_last_k(Text *t, int k) {
+    if (k <= 0) return;
+    if (k > t->len) k = t->len;
+    t->len -= k;
+    t->buf[t->len] = '\0';
+}
+
+static char text_get_k(const Text *t, int k) {
+    
+    if (k <= 0 || k > t->len) return '\0';
+    return t->buf[k - 1];
+}
+
+typedef struct {
+    int type;     
+    int arg;      
+    char *data; 
+} UndoEntry;
+
+typedef struct {
+    UndoEntry *arr;
+    int top;
+    int cap;
+} UndoStack;
+
+static void stack_init(UndoStack *st, int cap_hint) {
+    st->cap = (cap_hint > 0 ? cap_hint : 1024);
+    st->top = 0;
+    st->arr = (UndoEntry *)malloc(sizeof(UndoEntry) * st->cap);
+}
+
+static void stack_push(UndoStack *st, UndoEntry e) {
+    if (st->top == st->cap) {
+        st->cap <<= 1;
+        st->arr = (UndoEntry *)realloc(st->arr, sizeof(UndoEntry) * st->cap);
+    }
+    st->arr[st->top++] = e;
+}
+
+static int stack_empty(const UndoStack *st) { return st->top == 0; }
+
+static UndoEntry stack_pop(UndoStack *st) {
+    UndoEntry z = {0,0,NULL};
+    if (st->top == 0) return z;
+    return st->arr[--st->top];
+}
+
+int main(void) {
+   
+    ios_base_sync_with_stdio: ;
+    
+    int Q;
+    if (scanf("%d", &Q) != 1) return 0;
+
+    Text txt;
+    text_init(&txt);
+
+    UndoStack ust;
+    stack_init(&ust, Q);
+
+    char opbuf[16];
+    
+    int op;
+
+    char *in = NULL;
+    size_t in_cap = 0;
+
+    for (int i = 0; i < Q; ++i) {
+        if (scanf("%d", &op) != 1) return 0;
+
+        if (op == 1) {
+
+            if (in_cap < 2000005) {
+                free(in);
+                in_cap = 2000005;
+                in = (char *)malloc(in_cap);
+            }
+            scanf("%s", in);
+            int L = (int)strlen(in);
+
+            text_append(&txt, in, L);
+            UndoEntry ue;
+            ue.type = 1;
+            ue.arg  = L;
+            ue.data = NULL;
+            stack_push(&ust, ue);
+
+        } else if (op == 2) {
+            int k;
+            scanf("%d", &k);
+            if (k < 0) k = 0;
+            if (k > txt.len) k = txt.len;
+            char *deleted = NULL;
+            if (k > 0) {
+                deleted = (char *)malloc((size_t)k + 1);
+                memcpy(deleted, txt.buf + (txt.len - k), (size_t)k);
+                deleted[k] = '\0';
+            }
+
+            text_delete_last_k(&txt, k);
+            UndoEntry ue;
+            ue.type = 2;
+            ue.arg  = 0;
+            ue.data = deleted; 
+            stack_push(&ust, ue);
+
+        } else if (op == 3) {
+            int k;
+            scanf("%d", &k);
+            char c = text_get_k(&txt, k);
+            if (c != '\0') {
+                putchar(c);
+                putchar('\n');
+            } else {
+                putchar('\n');
+            }
+
+        } else if (op == 4) {
+            if (!stack_empty(&ust)) {
+                UndoEntry ue = stack_pop(&ust);
+                if (ue.type == 1) {
+                    text_delete_last_k(&txt, ue.arg);
+                } else if (ue.type == 2) {
+                    if (ue.data) {
+                        int L = (int)strlen(ue.data);
+                        text_append(&txt, ue.data, L);
+                        free(ue.data);
+                    }
+                }
+            }
+        } else {
+            
+        }
+    }
+
+    free(txt.buf);
+    for (int i = 0; i < ust.top; ++i) {
+        if (ust.arr[i].type == 2 && ust.arr[i].data) free(ust.arr[i].data);
+    }
+    free(ust.arr);
+    free(in);
+    return 0;
+}
+

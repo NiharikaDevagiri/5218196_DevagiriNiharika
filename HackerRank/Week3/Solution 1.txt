@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define MAX 210
+
+int R, C, N;
+char grid[MAX][MAX], temp[MAX][MAX];
+
+void copyGrid(char src[MAX][MAX], char dest[MAX][MAX]) {
+    
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
+            dest[i][j] = src[i][j];
+        }
+        dest[i][C] = '\0';
+    }
+}
+
+void fullBombs(char g[MAX][MAX]) {
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
+            g[i][j] = 'O';
+        }
+        g[i][C] = '\0';
+    }
+}
+
+void detonate(char src[MAX][MAX], char dest[MAX][MAX]) {
+    fullBombs(dest);
+
+    int dr[4] = {-1, 1, 0, 0};
+    int dc[4] = {0, 0, -1, 1};
+
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
+            if (src[i][j] == 'O') {
+                dest[i][j] = '.';
+                for (int k = 0; k < 4; k++) {
+                    int ni = i + dr[k], nj = j + dc[k];
+                    if (ni >= 0 && ni < R && nj >= 0 && nj < C) {
+                        dest[ni][nj] = '.';
+                    }
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    scanf("%d %d %d", &R, &C, &N);
+
+    for (int i = 0; i < R; i++) {
+        scanf("%s", grid[i]);
+    }
+
+    if (N == 1) {
+        // initial state
+    } else if (N % 2 == 0) {
+        fullBombs(grid);
+    } else {
+        char first[MAX][MAX], second[MAX][MAX];
+        detonate(grid, first);
+        detonate(first, second);
+
+        if (N % 4 == 3) {
+            copyGrid(first, grid);
+        } else {
+            copyGrid(second, grid);
+        }
+    }
+    for (int i = 0; i < R; i++) {
+        printf("%s\n", grid[i]);
+    }
+
+    return 0;
+}
